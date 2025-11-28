@@ -75,7 +75,7 @@ class Consumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(message["message"]))
 
 def serve_xml_level(request):
-    file_path = Path(settings.ROOT_DIR) / "santa/static/Level1.svg"
+    file_path = Path(settings.ROOT_DIR) / "santa/static/Level2.svg"
     return FileResponse(open(file_path, 'rb'), content_type='application/xml')
 
 

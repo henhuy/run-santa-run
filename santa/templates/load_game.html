@@ -16,11 +16,11 @@
     let images = [];
     for (let i = 1; i < 5; i++) {
       const img = new Image(); // Create new img element
-      img.src = img_path + "/img" + i + ".png"; // Set source path
+      img.src = img_path + "/slay" + i + ".png"; // Set source path
       images.push(img);
     }
     let jumpImg = new Image();
-    jumpImg.src = img_path + "/jump.png";
+    jumpImg.src = img_path + "/slay.png";
     
     let textureImg = new Image();
     textureImg.src = img_path + "/texture.png"
@@ -44,7 +44,7 @@
     ctx.canvas.height = height;
 
 	gamestate = new Gamestate();
-    let player = new Player(100, 200, 50, 80);
+    let player = new Player(100, 200, 117, 80);
 	player.images = images;
     player.jumpImg = jumpImg;
 	gamestate.background = bgImage;

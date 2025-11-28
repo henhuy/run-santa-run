@@ -15,8 +15,9 @@ const height = 800;
 const jumpheight = 200; // px
 const jumptime = 1.2; // second
 const PLAYER_SPEED = 150;
+const DISCHARGE_TIME = 200;
 const grav = jumpheight * 8 / jumptime / jumptime;
-const jump_speed = grav * jumptime / 2;
+const jump_speed = grav * 1 / 20;
 const speed_up = 1 / 60; //per second
 const playerSpeedUp = speed_up * PLAYER_SPEED;
 const startEvent = new Event("StartGame");
@@ -45,6 +46,7 @@ class Gamestate {
     this.victoryScreenImg = null;
     this.gameoverScreenImg = null;
     this.startScreenImg = null;
+    this.next_discharge_at = DISCHARGE_TIME;
   }
 
   addDrawable(drawable) {
@@ -89,6 +91,7 @@ class Gamestate {
         this.drawText = (_, __) => void 0;
         this.drawables.push;
         this.playerSpeedUp = 0;
+        this.next_discharge_at = DISCHARGE_TIME;
         break;
       case "play":
         generatelevel(this);
@@ -167,13 +170,10 @@ class Gamestate {
     this.player.y_pos += d_y;
     //  this.player.y_pos = this.player.y_pos % this.height;
     if (this.player.y_pos > this.ctx.canvas.height) {
-	  if (this.player.lifes>1){
-		  this.player.lifes -=1;
-		  this.switchMode("play");
-		  window.dispatchEvent(deathEvent);
-		  return
-	  }
-      this.switchMode("gameover");
+	    this.player.loose_life();
+    }
+    if (this.player.y_pos < 0) {
+	    this.player.loose_life();
     }
   }
   scaleBySpeedUp(speedUp) {
@@ -200,6 +200,10 @@ class Gamestate {
   play() {
     //  const secondsSinceLastRender = (currentTime - lastRenderTime) / 1000;
     this.playTime += this.dt;
+    if ((0 < this.playTime - this.next_discharge_at * this.dt) & (this.playTime - this.next_discharge_at * this.dt < this.dt)) {
+      this.next_discharge_at += DISCHARGE_TIME;
+      this.player.discharge_battery()
+    }
     let currentSpeedUp = this.playerSpeedUp / PLAYER_SPEED * this.dt;
     this.scaleBySpeedUp(currentSpeedUp);
     this.draw(this.ctx);
@@ -288,6 +292,10 @@ class Gamestate {
       hasCollided1 = drawable.checkCollision(this.player);
       hasCollided2 = this.player.checkCollision(drawable);
       if (!hasCollided1 && !hasCollided2) {
+        continue;
+      }
+      if (drawable.color === "lime") {
+        this.player.charge_battery();
         continue;
       }
       let angle;
@@ -514,6 +522,17 @@ function getCollisionVector(points, collision) {
   return [dir_vec_xy[1], -dir_vec_xy[0]];
 }
 
+class Charger extends Box {
+  constructor(x_pos, y_pos, width, height) {
+    super(true);
+    this.x_pos = x_pos;
+    this.y_pos = y_pos;
+    this.width = width;
+    this.height = height;
+    this.color = "lime";
+  }
+}
+
 class Player extends Box {
   constructor(x_pos, y_pos, width, height) {
     super(true);
@@ -525,25 +544,15 @@ class Player extends Box {
     this.y_speed = 0;
     this.x_speed = 0;
     this.images = null;
-	this.jumpImg = null;
-    this.canJump = false;
-	this.lifes  = 3;
+	  this.jumpImg = null;
+    this.canJump = true;
+	  this.lifes = 3;
+    this.soc = 3
     this.i = 0;
   }
 
   draw(canvasContext) {
-    if (this.canJump) {
-      canvasContext.drawImage(this.images[Math.floor(this.i)], this.x_pos, this.y_pos, this.width, this.height);
-	  // assume that images show two steps -> x width of movement// assume for 60fps
-      this.i =(this.i + (this.x_speed *(1/60)*this.images.length)/(1.5*this.width))% (this.images.length);
-
-      return;
-    }
-	var jump = this.images[0];
-	if (this.jumpImg !=null){
-			jump = this.jumpImg;
-	}
-    canvasContext.drawImage(jump, this.x_pos, this.y_pos, this.width, this.height);
+    canvasContext.drawImage(this.images[this.soc - 1], this.x_pos, this.y_pos, this.width, this.height);
   }
 
   update(dt, playerSpeedUp) {
@@ -553,26 +562,38 @@ class Player extends Box {
 
 
   jump() {
-    if (this.canJump == false) {
-      return;
-
-    }
-
     let e = new CustomEvent("jump", { time: this.playTime });
     window.dispatchEvent(e);
     this.y_speed -= jump_speed;
-    this.canJump = false;
   }
-  /*
-    move(){
-      this.x_pos =(this.x_pos+ this.x_speed) % canvas.width;
-      this.y_pos = (this.y_pos+ this.y_speed) % canvas.height;
-      this.x_speed = player_speed;
+
+  loose_life(){
+    this.soc = 3;
+    if (this.lifes>1) {
+		  this.lifes -=1;
+		  gamestate.switchMode("play");
+		  window.dispatchEvent(deathEvent);
+		  return
+	  }
+      gamestate.switchMode("gameover");
+  }
+
+  discharge_battery(){
+    this.soc -= 1;
+    if (this.soc == 0){
+      this.loose_life()
     }
-  */
+  }
+
+  charge_battery(){
+    this.soc = 3;
+  }
 
   collide(angle) {
     // collision only effects the drawable for now
+    if (angle[0] != 0) {
+      this.loose_life();
+    }
     if (angle[1] < 0) {
       this.canJump = true;
     }
@@ -640,6 +661,7 @@ function deepcopyDrawables(drawables) {
         drawable.width,
         drawable.height,
       )
+      b.color = drawable.color;
       b.images = drawable.images;
       b.canCollide = drawable.canCollide;
       new_drawables.push(b);
@@ -663,49 +685,63 @@ function generatelevel(gamestate) {
 	gamestate.player.y_pos = 200;
 	gamestate.player.x_pos = 100;
 	gamestate.x_pos = 0 ;
-      gamestate.drawables = [];
-      if (svgDoc == null) {
-        let new_box = new Box(0, 750, 50000,150)
-        new_box.images =[gamestate.textureImg];
-        gamestate.addDrawable(new_box);
-        for (let i=1; i<50; i++){
-           gamestate.addDrawable(new Text("Jump", i*600,500, 40));
-        }
-
-        let startBox = new Box(100,100,100,100)
-          startBox.images = [gamestate.startScreenImg]
-          startBox.canCollide = false;
-          gamestate.player.x_speed = 0;
-          gamestate.addDrawable(startBox);
-          gamestate.draw(gamestate.ctx)
-
-         let x_mid = gamestate.ctx.canvas.width / 2;
-        let y_mid = gamestate.ctx.canvas.height / 2;
-        let w = gamestate.startScreenImg.width;
-        let h = gamestate.startScreenImg.height;
-        startBox.x_pos = x_mid - w / 2;
-        startBox.y_pos = y_mid - h / 2;
-        startBox.width = w;
-        startBox.height = h;
-
-        return
-        }
-      let boxes = generateXmlLevel(svgDoc);
-      this.gamestate.checkPoints = [];
-      gamestate.addCheckpoint(0);
-      gamestate.addCheckpoint(3000);
-      gamestate.addCheckpoint(6000);
-      gamestate.addCheckpoint(8750);
-      let victory = new Box(10800, 440-250, 200, 250);
-      gamestate.addVictory(10800);
-      victory.images = [victoryImg];
-      victory.canCollide = false;
-      gamestate.addDrawable(victory)
-
-      let offset = 0;
-      for (const box of boxes) {
-        let new_box = new Box(box.x-offset, box.y, box.width, box.height);
-        new_box.images =[gamestate.textureImg];
-        gamestate.addDrawable(new_box);
-      }
+  gamestate.drawables = [];
+  if (svgDoc == null) {
+    let new_box = new Box(0, 750, 50000,150)
+    new_box.images =[gamestate.textureImg];
+    gamestate.addDrawable(new_box);
+    for (let i=1; i<50; i++){
+       gamestate.addDrawable(new Text("Jump", i*600,500, 40));
     }
+
+    let startBox = new Box(100,100,100,100)
+      startBox.images = [gamestate.startScreenImg]
+      startBox.canCollide = false;
+      gamestate.player.x_speed = 0;
+      gamestate.addDrawable(startBox);
+      gamestate.draw(gamestate.ctx)
+
+     let x_mid = gamestate.ctx.canvas.width / 2;
+    let y_mid = gamestate.ctx.canvas.height / 2;
+    let w = gamestate.startScreenImg.width;
+    let h = gamestate.startScreenImg.height;
+    startBox.x_pos = x_mid - w / 2;
+    startBox.y_pos = y_mid - h / 2;
+    startBox.width = w;
+    startBox.height = h;
+
+    return
+  }
+  let boxes = generateXmlLevel(svgDoc);
+  this.gamestate.checkPoints = [];
+  gamestate.addCheckpoint(0);
+  gamestate.addCheckpoint(2800);
+  gamestate.addCheckpoint(6000);
+  gamestate.addCheckpoint(8750);
+  let victory = new Box(10800, 440-250, 200, 250);
+  gamestate.addVictory(10800);
+  victory.images = [victoryImg];
+  victory.canCollide = false;
+  gamestate.addDrawable(victory)
+
+  const charging_points = [
+    [900, 550],
+    [2000, 200],
+    [2800, 180],
+    [3550, 360],
+    [4000, 200],
+    [4650, 600]
+  ];
+  for (const point of charging_points) {
+    let new_box = new Box(point[0], point[1], 50, 50);
+    new_box.color = "lime";
+    gamestate.addDrawable(new_box);
+  }
+
+  let offset = 0;
+  for (const box of boxes) {
+    let new_box = new Box(box.x-offset, box.y, box.width, box.height);
+    new_box.images =[gamestate.textureImg];
+    gamestate.addDrawable(new_box);
+  }
+}
