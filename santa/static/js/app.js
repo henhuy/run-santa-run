@@ -547,7 +547,7 @@ class Player extends Box {
     this.images = null;
 	  this.jumpImg = null;
     this.canJump = true;
-	  this.lifes = 3;
+	  this.lifes = 5;
     this.soc = 3
     this.i = 0;
   }
@@ -739,6 +739,8 @@ function generatelevel(gamestate) {
     [6200, 90],
     [6900, 680],
     [7430, 400],
+    [8300, 730],
+    [8680, 130],
   ];
   for (const point of charging_points) {
     let new_box = new Box(point[0], point[1], 50, 50);
