@@ -143,6 +143,7 @@ class Gamestate {
     this.player.y_pos = this.checkPoint.y_pos;
     this.playTime = this.checkPoint.playTime;
     this.background_x = this.checkPoint.background_x;
+    this.next_discharge_at = this.checkPoint.next_discharge_at;
     this.player.x_pos = this.checkPoint.player_x_pos;
     this.player.y_speed = this.checkPoint.y_speed;
     this.player.x_speed = this.checkPoint.x_speed;
@@ -641,6 +642,7 @@ class Checkpoint {
   constructor(gamestate) {
     this.x_pos = gamestate.x_pos;
     this.player_x_pos = gamestate.player.x_pos;
+    this.next_discharge_at = gamestate.next_discharge_at;
     this.background_x = gamestate.background_x;
     this.y_pos = gamestate.player.y_pos;
     this.x_speed = gamestate.player.x_speed;
@@ -715,22 +717,28 @@ function generatelevel(gamestate) {
   let boxes = generateXmlLevel(svgDoc);
   this.gamestate.checkPoints = [];
   gamestate.addCheckpoint(0);
-  gamestate.addCheckpoint(2800);
-  gamestate.addCheckpoint(6000);
-  gamestate.addCheckpoint(8750);
-  let victory = new Box(10800, 440-250, 200, 250);
-  gamestate.addVictory(10800);
+  gamestate.addCheckpoint(2100);
+  gamestate.addCheckpoint(3500);
+  gamestate.addCheckpoint(5100);
+  gamestate.addCheckpoint(6400);
+  gamestate.addCheckpoint(7740);
+  let victory = new Box(9310, 440-250, 200, 250);
+  gamestate.addVictory(9310);
   victory.images = [victoryImg];
   victory.canCollide = false;
   gamestate.addDrawable(victory)
 
   const charging_points = [
-    [900, 550],
-    [2000, 200],
-    [2800, 180],
-    [3550, 360],
-    [4000, 200],
-    [4650, 600]
+    [1120, 410],
+    [1820, 70],
+    [2460, 380],
+    [3120, 660],
+    [3800, 440],
+    [4900, 150],
+    [5460, 530],
+    [6200, 90],
+    [6900, 680],
+    [7430, 400],
   ];
   for (const point of charging_points) {
     let new_box = new Box(point[0], point[1], 50, 50);
